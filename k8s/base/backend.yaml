@@ -1,0 +1,73 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend
+  namespace: smart-planner
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: backend
+  template:
+    metadata:
+      labels:
+        app: backend
+    spec:
+      containers:
+        - name: backend
+          image: smart-planner/backend:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8080
+          env:
+            - name: PORT
+              value: "8080"
+            - name: ALLOWED_ORIGINS
+              value: "*"
+            - name: REDIS_ADDR
+              value: redis:6379
+            - name: POSTGRES_URL
+              value: postgres://postgres:postgres@postgres-0.postgres.smart-planner.svc.cluster.local:5432/smartplanner?sslmode=disable
+            - name: OPENAI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: planner-secrets
+                  key: OPENAI_API_KEY
+                  optional: true
+            - name: SLACK_WEBHOOK_URL
+              valueFrom:
+                secretKeyRef:
+                  name: planner-secrets
+                  key: SLACK_WEBHOOK_URL
+                  optional: true
+            - name: DISCORD_WEBHOOK_URL
+              valueFrom:
+                secretKeyRef:
+                  name: planner-secrets
+                  key: DISCORD_WEBHOOK_URL
+                  optional: true
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: 8080
+            initialDelaySeconds: 6
+            periodSeconds: 8
+          livenessProbe:
+            httpGet:
+              path: /health/live
+              port: 8080
+            initialDelaySeconds: 15
+            periodSeconds: 12
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend
+  namespace: smart-planner
+spec:
+  selector:
+    app: backend
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080

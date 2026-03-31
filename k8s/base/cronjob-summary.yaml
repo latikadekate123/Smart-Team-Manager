@@ -1,0 +1,22 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: nightly-summary
+  namespace: smart-planner
+spec:
+  schedule: "0 2 * * *"
+  successfulJobsHistoryLimit: 2
+  failedJobsHistoryLimit: 2
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: summary
+              image: curlimages/curl:8.8.0
+              args:
+                - -sS
+                - -X
+                - POST
+                - http://backend:8080/api/nightly/summary
